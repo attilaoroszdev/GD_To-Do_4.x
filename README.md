@@ -1,5 +1,5 @@
 # GD To-Do Is A Powerful Add-on For Managing Tasks Inside Godot Engine
-This repository is for Godot 4.x [click here](https://github.com/attilaoroszdev/GD_To-Do_3x) for Godot.3 version.
+This repository is for Godot 4.x [click here](https://github.com/attilaoroszdev/GD_To-Do_3x) for Godot.3x version.
 ---
 ## Features
 ### Notes
