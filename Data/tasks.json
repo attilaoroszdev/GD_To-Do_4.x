@@ -1,0 +1,14 @@
+[
+	{
+		"completed": false,
+		"content": "Starred Task",
+		"data": {
+			"addition_time": "2023-11-12 11:32:35",
+			"completion_time": "...",
+			"name": "Starred Task",
+			"state": "Incomplete"
+		},
+		"id": 2,
+		"is_starred": true
+	}
+]

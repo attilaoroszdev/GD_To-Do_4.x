@@ -1,0 +1,41 @@
+[gd_scene load_steps=4 format=3 uid="uid://i6gwqgo8joxr"]
+
+[ext_resource type="Script" path="res://addons/To-Do/SRC/FocusTask.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://xv6r05n1y7tj" path="res://addons/To-Do/Icons/Remove.svg" id="2"]
+[ext_resource type="Texture2D" uid="uid://f6gdfjw8mwg2" path="res://addons/To-Do/Icons/Info.svg" id="3"]
+
+[node name="FocusTask" type="HBoxContainer"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 31.0
+grow_horizontal = 2
+size_flags_horizontal = 3
+script = ExtResource("1")
+
+[node name="LineEdit" type="LineEdit" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+editable = false
+
+[node name="InfoButton" type="Button" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.08
+icon = ExtResource("3")
+icon_alignment = 1
+expand_icon = true
+
+[node name="DeleteButton" type="Button" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.08
+icon = ExtResource("2")
+icon_alignment = 1
+expand_icon = true
+
+[connection signal="pressed" from="InfoButton" to="." method="_on_InfoButton_pressed"]
+[connection signal="pressed" from="DeleteButton" to="." method="_on_DeleteButton_pressed"]
