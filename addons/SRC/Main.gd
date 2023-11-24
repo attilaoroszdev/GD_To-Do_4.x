@@ -13,6 +13,11 @@ const note = preload("res://addons/To-Do/SRC/Note.tscn")
 
 @onready var task_edit = $"%TaskEdit"
 @onready var tasks_v_box = $"%TasksVBox"
+@onready var starred_tasks_v_box = $"%StarredTasksVBox"
+@onready var completed_tasks_v_box = $"%CompletedTasksVBox"
+@onready var starred_tasks_label = $"%StarredTasksLabel"
+@onready var active_tasks_label = $"%ActiveTasksLabel"
+@onready var completed_tasks_label = $"%CompletedTaskslabel"
 @onready var open_focus_tasks = $"%OpenFocusTasks"
 @onready var notes_v_box = $"%NotesVBox"
 @onready var focus_timer = $"%FocusTimer"
@@ -33,6 +38,7 @@ var running_task_id:int
 ##adda new task
 func _on_AddButton_pressed():
 	if task_edit.text != "" :
+		tasks_are_empty = false
 		running_task_id += 1
 		var ins = task.instantiate()
 		ins.content = task_edit.text
@@ -64,9 +70,12 @@ func _on_AddButton_pressed():
 		ins.connect("stop_task_timer", stop_timer_from_task)
 		ins.connect("note_button_pressed", task_note_button_pressed)
 		ins.connect("favourite_pressed", task_starred)
+		ins.connect("color_tag_changed", task_color_tag_changed)
 		ins.favourite_button.button_pressed = false
-		sort_tasks()
-		
+#		sort_tasks()
+		disable_up_down_buttons_at_edges()
+		toggle_list_labels()
+		save_changes()
 		# Since we now have at least one task
 		delete_all_tasks_button.disabled = false
 #		delete_completed_tasks_button.disabled = false
@@ -74,24 +83,21 @@ func _on_AddButton_pressed():
 # Moves task up one opsition
 func move_task_up(ins):
 	var pos = ins.get_index()
+	# Probably unnecessary button should be disabled anyway
 	if pos > 0:
-		if pos == 1:
-			ins.move_up_button.disabled = true
-		tasks_v_box.move_child(ins, pos - 1)
+		ins.get_parent().move_child(ins, pos - 1)
 		# If the task is at the top, we don't need the up button
 		disable_up_down_buttons_at_edges()
 
-		save_changes()
-
 # Moves task down one opsition	
 func move_task_down(ins):
-
 	var pos = ins.get_index() 
-	if pos < tasks_v_box.get_child_count() - 1:
-		tasks_v_box.move_child(ins, pos + 1)
+	# Probably unnecessary button should be disabled anyway
+	if pos < ins.get_parent().get_child_count() - 1:
+		ins.get_parent().move_child(ins, pos + 1)
 		# If it's the last incomplete task, it should not be able to move more
 		disable_up_down_buttons_at_edges()
-		save_changes()
+
 
 
 # Need to be able to stop any active focus timer associated with this task
@@ -101,85 +107,57 @@ func task_state_changed(task):
 		if focus_timer.is_focusing:
 			if focus_timer.task_name.text == task.content:
 				focus_timer._on_StartFocus_pressed()
-	var have_completed_tasks:bool = false
-	for t in tasks_v_box.get_children():
-		if t.completed:
-			have_completed_tasks = true
-			break
-	delete_completed_tasks_button.disabled = not have_completed_tasks
-	sort_tasks()
-
-
-# Rewrote the sorting to better accomodate different types of sorting, 
-# at the same time. Two custom array sorts produced soem unexpected results
-# and I had no patience to dive deeper into why. Anyway, new method makes it
-# unnecessary to save twice, and then set everything up from scratch. See below
-##sorts the tasks (uncompleted first).
-#func sort_tasks_old() :
-#	save_changes()
-#	var tasks = _load(tasks_save_path)
-#	tasks.sort_custom(self, "sort_by_completed")
-#
-#	##removes unsorted the tasks.
-#	for c in tasks_v_box.get_children() :
-#		c.queue_free()
-#		yield(c, "tree_exited")
-#	##adds the sorted tasks.
-#	for t in tasks :
-#		var copy = task.instantiate()
-#		copy.content = t.content
-#		copy.completed = t.completed
-#		copy.id = t.id
-#		copy.is_starred = t.is_starred
-#
-#		copy.data = t.data
-#		tasks_v_box.add_child(copy)
-#		copy.connect("state_changed", self, "task_state_changed")
-#		copy.connect("content_changed", self, "save_changes")
-#		copy.connect("task_removed", self, "remove_task")
-#		copy.connect("move_up", self, "move_task_up")
-#		copy.connect("move_down", self, "move_task_down")
-#		copy.connect("start_task_timer", self, "start_timer_from_task")
-#		copy.connect("stop_task_timer", self, "stop_timer_from_task")
-#		copy.connect("note_button_pressed", self, "task_note_button_pressed")
-#		copy.connect("favourite_pressed", self, "task_starred")
-#		copy.favourite_button.button_pressed = copy.is_starred
-#	# Checking both ends of the incomplete task list
-#	disable_up_down_buttons_at_edges()
-#	check_existing_task_notes()
-#	save_changes()
-
-
-func sort_tasks():
-	var starred_tasks_tmp:Array = []
-	var incomplete_tasks_tmp:Array = []
-	var completed_tasks_tmp:Array = []
 	
-	# Sort existing tasks into temporary arrays, then rremove them from the contianer
-	for task in tasks_v_box.get_children():
-		if task.completed:
-			completed_tasks_tmp.append(task)
+	# Remove task from wherever it is
+	task.get_parent().remove_child(task)
+	
+	# And put it into the right container
+	if task.completed:
+		completed_tasks_v_box.add_child(task)
+		completed_tasks_v_box.move_child(task, 0)
+	else:
+		if task.is_starred:
+			starred_tasks_v_box.add_child(task)
 		else:
-			if task.is_starred:
-				starred_tasks_tmp.append(task)
-			else:
-				incomplete_tasks_tmp.append(task)
-		tasks_v_box.remove_child(task)
-	
-	# Add back tasks from each array. Signals and data remain intact
-	for task in starred_tasks_tmp:
-		tasks_v_box.add_child(task)
-	starred_tasks_tmp.clear()
-	for task in incomplete_tasks_tmp:
-		tasks_v_box.add_child(task)
-	incomplete_tasks_tmp.clear()
-	for task in completed_tasks_tmp:
-		tasks_v_box.add_child(task)
-	completed_tasks_tmp.clear()
-
-	# Check the buttons
+			tasks_v_box.add_child(task)
+		
+	delete_completed_tasks_button.disabled = completed_tasks_v_box.get_child_count() == 0
+	toggle_list_labels()
 	disable_up_down_buttons_at_edges()
-	save_changes()
+#	sort_tasks()
+
+
+#This has become totally unnecessary now
+#func sort_tasks():
+#	var starred_tasks_tmp:Array = []
+#	var incomplete_tasks_tmp:Array = []
+#	var completed_tasks_tmp:Array = []
+#
+#	# Sort existing tasks into temporary arrays, then rremove them from the contianer
+#	for task in tasks_v_box.get_children():
+#		if task.completed:
+#			completed_tasks_tmp.append(task)
+#		else:
+#			if task.is_starred:
+#				starred_tasks_tmp.append(task)
+#			else:
+#				incomplete_tasks_tmp.append(task)
+#		tasks_v_box.remove_child(task)
+#
+#	# Add back tasks from each array. Signals and data remain intact
+#	for task in starred_tasks_tmp:
+#		starred_tasks_v_box.add_child(task)
+#	starred_tasks_tmp.clear()
+#	for task in incomplete_tasks_tmp:
+#		tasks_v_box.add_child(task)
+#	incomplete_tasks_tmp.clear()
+#	for task in completed_tasks_tmp:
+#		completed_tasks_v_box.add_child(task)
+#	completed_tasks_tmp.clear()
+#
+#	# Check the buttons
+#	disable_up_down_buttons_at_edges()
+#	save_changes()
 
 
 func sort_notes():
@@ -213,44 +191,32 @@ func sort_notes():
 		
 
 		
-# This is where the "magic" happens. :D If task is on the top, up buttn gets disabled.
-# If task is at the bottom, or the last incomplete task, down button gets disabled
-# (So it won't get mixed with the completed ones at the bottom)
-# Could have put the different checks in separate functions, but why complicate things
+# This is a lot neater and easier with less room for error.
+# It will disable the up button for the first and the down button for the last task
+# in every container
 func disable_up_down_buttons_at_edges():
-	tasks_v_box.get_child(0).move_up_button.disabled = true
-	for idx in tasks_v_box.get_child_count():
-		# Enable all in case of moving thigns around
-		if not tasks_v_box.get_child(idx).completed and not tasks_v_box.get_child(idx).is_starred:
-			tasks_v_box.get_child(idx).move_down_button.disabled = false
-			tasks_v_box.get_child(idx).move_up_button.disabled = false
-		# Starred tasks cannot move
-		if tasks_v_box.get_child(idx).is_starred:
-			tasks_v_box.get_child(idx).move_down_button.disabled = true
-			tasks_v_box.get_child(idx).move_up_button.disabled = true
-		# First task cannot go up
-		elif idx == 0 and not tasks_v_box.get_child(idx).completed:
-			tasks_v_box.get_child(idx).move_up_button.disabled = true
-		# Only disable down button  the one before the first completed item
-		elif tasks_v_box.get_child(idx).completed and idx > 0:
-			tasks_v_box.get_child(idx - 1).move_down_button.disabled = true
-			break
-		# Disable upward movement for the first non-starred task
-		elif not tasks_v_box.get_child(idx).is_starred and idx > 0:
-			if tasks_v_box.get_child(idx - 1).is_starred:
-				tasks_v_box.get_child(idx).move_up_button.disabled = true
-			else:
-				tasks_v_box.get_child(idx).move_up_button.disabled = false
-	tasks_v_box.get_child(tasks_v_box.get_child_count() - 1).move_down_button.disabled = true	
+	if starred_tasks_v_box.get_child_count() == 1:
+		starred_tasks_v_box.get_child(0).move_up_button.disabled = true
+		starred_tasks_v_box.get_child(0).move_down_button.disabled = true
+	else:
+		for starred_task in starred_tasks_v_box.get_children():
+			var pos = starred_task.get_position_in_parent()
+			starred_task.move_up_button.disabled = pos == 0
+			starred_task.move_down_button.disabled = pos == starred_tasks_v_box.get_child_count() - 1
+	
+	if tasks_v_box.get_child_count() == 1:
+		tasks_v_box.get_child(0).move_up_button.disabled = true
+		tasks_v_box.get_child(0).move_down_button.disabled = true
+	else:
+		for task in tasks_v_box.get_children():
+			var pos = task.get_position_in_parent()
+			task.move_up_button.disabled = pos == 0
+			task.move_down_button.disabled = pos == tasks_v_box.get_child_count() - 1
 
-
-# This is no longer necessary with the new sorting fucntion
-##sorts the tasks by completed (uncompleted first).
-#func sort_by_completed(a, b)-> bool :
-#	##returns true if a is completed but b isn't.
-#	if int(a.completed) < int(b.completed) :
-#		return true
-#	return false
+	for completed_task in completed_tasks_v_box.get_children():
+		completed_task.move_up_button.disabled = true
+		completed_task.move_down_button.disabled = true
+	save_changes()
 
 
 ##adds new note
@@ -296,6 +262,10 @@ func _load(path:String) :
 
 
 func _ready():
+	load_tasks_and_notes()
+
+# Moved this into a separate function for more flexibility
+func load_tasks_and_notes():
 	# We don't know of any existing IDs yet
 	running_task_id =  1
 	##makes sure every @onready var is set.
@@ -303,6 +273,14 @@ func _ready():
 		child.connect("ready", child_ready)
 	##removes all the tasks(if were).
 	for t in tasks_v_box.get_children() :
+		t.queue_free()
+		await t.tree_exited
+		
+	for t in starred_tasks_v_box.get_children() :
+		t.queue_free()
+		await t.tree_exited
+		
+	for t in completed_tasks_v_box.get_children() :
 		t.queue_free()
 		await t.tree_exited
 	var tasks_data = _load(tasks_save_path)
@@ -320,7 +298,7 @@ func _ready():
 			if t.has("is_starred"):
 				ins.is_starred = t.is_starred
 			else:
-				ins.is_starred = false	
+				ins.is_starred = false
 			if t.has("id"):
 				ins.id = t.id
 			else:
@@ -330,10 +308,22 @@ func _ready():
 			if running_task_id < ins.id:
 				running_task_id = ins.id
 			ins.content = t.content
+			
+			if t.has("color_tag"):
+				ins.color_tag = t.color_tag
+			else:
+				ins.color_tag = ins.DEFAULT_BG_COLOUR
+				
 			if t.has("data") :
 				ins.data = t.data.duplicate()
 			
-			tasks_v_box.add_child(ins)
+			# Put things into their appropriate containers
+			if ins.completed:
+				completed_tasks_v_box.add_child(ins)
+			elif ins.is_starred:
+				starred_tasks_v_box.add_child(ins)
+			else:
+				tasks_v_box.add_child(ins)
 		
 			ins.connect("state_changed", task_state_changed)
 			ins.connect("content_changed", save_changes)
@@ -344,6 +334,7 @@ func _ready():
 			ins.connect("stop_task_timer", stop_timer_from_task)
 			ins.connect("note_button_pressed", task_note_button_pressed)
 			ins.connect("favourite_pressed", task_starred)
+			ins.connect("color_tag_changed", task_color_tag_changed)
 			ins.favourite_button.button_pressed = ins.is_starred
 		
 		
@@ -369,32 +360,40 @@ func _ready():
 			ins.connect("state_changed", save_changes)
 			ins.connect("note_removed", remove_note)
 	# Some necessary checks and stuff, as already seen above		
-	if tasks_v_box.get_child_count() > 0:
+	if tasks_v_box.get_child_count() > 0 or starred_tasks_v_box.get_child_count() > 0 or completed_tasks_v_box.get_child_count() > 0:
 		tasks_are_empty = false
-		sort_tasks()
+#		sort_tasks()
 		disable_up_down_buttons_at_edges()
 		
+		
 		delete_all_tasks_button.disabled = false
-		delete_completed_tasks_button.disabled = not have_completed_tasks
 	else:
 		delete_all_tasks_button.disabled = true
-		delete_completed_tasks_button.disabled = true
-	if is_instance_valid(notes_v_box):
-		if notes_v_box.get_child_count() > 0:
-			notes_are_empty = false
-			delete_all_notes_button.disabled = false
-			load_predefined_tasks()
-			sort_notes()
-		else:
-			delete_all_notes_button.disabled = true
-	check_existing_task_notes()
-	
 
-# Checks for every task in the task list if it has any notes linked to it
+	toggle_list_labels()
+	#Disable the button if there are no completed tasks at load time
+	delete_completed_tasks_button.disabled = completed_tasks_v_box.get_child_count() == 0
+
+#	if is_instance_valid(notes_v_box):
+	if notes_v_box.get_child_count() > 0 or starred_tasks_v_box.get_child_count() > 0 or completed_tasks_v_box.get_child_count() > 0:
+		notes_are_empty = false
+		delete_all_notes_button.disabled = false
+		load_predefined_tasks()
+		sort_notes()
+	else:
+		delete_all_notes_button.disabled = true
+	check_existing_task_notes()
+
+# only show the label, if for non-empty list containers
+func toggle_list_labels():
+	starred_tasks_label.visible = starred_tasks_v_box.get_child_count() > 0
+	active_tasks_label.visible = tasks_v_box.get_child_count() > 0
+	completed_tasks_label.visible = completed_tasks_v_box.get_child_count() > 0	
+
+# Rewrote this to check all three containers
 func check_existing_task_notes():
-	if notes_v_box.get_child_count() > 0:
-		for task in tasks_v_box.get_children():
-			# Defaulting to not having anything
+	for vbox in [starred_tasks_v_box, tasks_v_box, completed_tasks_v_box]:
+		for task in vbox.get_children():
 			task.set_has_note(false)
 			for note in notes_v_box.get_children():
 				if note.linked_task > 0:
@@ -403,34 +402,55 @@ func check_existing_task_notes():
 						task.set_has_note(true)
 						break
 
+# Have a new version above
+## Checks for every task in the task list if it has any notes linked to it
+#func check_existing_task_notes():
+#	if notes_v_box.get_child_count() > 0:
+#		for task in tasks_v_box.get_children():
+#			# Defaulting to not having anything
+#			task.set_has_note(false)
+#			for note in notes_v_box.get_children():
+#				if note.linked_task > 0:
+#					if task.id == note.linked_task:
+#						# Change the button for those tasks that have notes
+#						task.set_has_note(true)
+#						break
 
-func remove_task(task, save:bool):
-	tasks_v_box.remove_child(task)
+
+# Does what it says. The save_after_removal boolean is used by mass-removal functions
+# So it won't keep saving after every removed task.
+func remove_task(task, save_after_removal:bool):
+	var parent_v_box = task.get_parent()
+	parent_v_box.remove_child(task)
 	# Also delete the linked note
+	
 	for note in notes_v_box.get_children():
 		if note.linked_task == task.id:
-			remove_note(note, save)
+			remove_note(note, save_after_removal)
 	task.queue_free()
-	await task.tree_exited
+	# I had to comment this out, it caused trouble
+#	await task.tree_exited
 	# Probably unnecessary, but won't hurt
-	if tasks_v_box.get_child_count() == 0:
+	if tasks_v_box.get_child_count() == 0 and starred_tasks_v_box.get_child_count() == 0 and completed_tasks_v_box.get_child_count() == 0:
 		tasks_are_empty = true
 	else:
 		disable_up_down_buttons_at_edges()
+	parent_v_box = null
 	# Optional, for mass removal (Remove all button), not to save after every note removed
-	if save:
+	if save_after_removal:
+		toggle_list_labels()
 		save_changes()
 
 
-func remove_note(note, save:bool):
+func remove_note(note, save_notes_after_removal:bool):
 	notes_v_box.remove_child(note)
 	note.queue_free()
-	await note.tree_exited
+#	await note.tree_exited
 	# Probably unnecessary, but won't hurt
 	if notes_v_box.get_child_count() == 0:
 		notes_are_empty = true
 	# Optional, for mass removal (Remove all button), not to save after every note removed
-	if save:
+	if save_notes_after_removal:
 		save_changes()
 		check_existing_task_notes()
 
@@ -438,20 +458,22 @@ func remove_note(note, save:bool):
 func save_changes() :
 	##defines an array var for data.
 	var tasks_data = []
-	if is_instance_valid(tasks_v_box) :
-		##loops trough every task.
-		for t in tasks_v_box.get_children() :
-			##gets the data of the task.
-			var info = {
-				"id": t.id, # For identifying atached notes
-				"is_starred": t.is_starred, # favourites are marked with a srtar now
-				"content" : t.content,
-				"completed" : t.completed,
-				"data" : t.data.duplicate(),
-			}
-			if not tasks_data.has(info) :
-				##appends the data of the task to the whole data array.
-				tasks_data.append(info)
+	# Go through each container and add any content found to the array
+	for vbox in [starred_tasks_v_box, tasks_v_box, completed_tasks_v_box]:
+		if is_instance_valid(vbox) :
+			##loops trough every task.
+			for t in tasks_v_box.get_children() :
+				##gets the data of the task.
+				var info = {
+					"id": t.id, # For identifying atached notes
+					"is_starred": t.is_starred, # favourites are marked with a srtar now
+					"content" : t.content,
+					"completed" : t.completed,
+					"data" : t.data.duplicate(),
+				}
+				if not tasks_data.has(info) :
+					##appends the data of the task to the whole data array.
+					tasks_data.append(info)
 		##saves the data to a file.
 		# Since the save_changes called from exit_tree deleted all my stuff, I really only want to 
 		# save an empty array when it was explicitly made empty
@@ -496,13 +518,21 @@ func load_predefined_tasks() -> void:
 	open_focus_tasks.clear()
 	var open_tasks:Array = []
 	var completed_tasks:Array = []
+	# Add starred tasks first
+	if starred_tasks_v_box.get_child_count() > 0:
+		for task in starred_tasks_v_box.get_children():
+			open_focus_tasks.add_item(task.content)
+			open_tasks.append(task)
+	# Then incomplete tasks
 	if tasks_v_box.get_child_count() > 0:
 		for task in tasks_v_box.get_children():
-			if not task.completed:
-				open_focus_tasks.add_item(task.content)
-				open_tasks.append(task)
-			else:
-				completed_tasks.append(task)
+			
+			open_focus_tasks.add_item(task.content)
+			open_tasks.append(task)
+	# And also completedtasks 9this will be used on the notes
+	if completed_tasks_v_box.get_child_count() > 0:
+		for task in completed_tasks_v_box.get_children():		
+			completed_tasks.append(task)
 	# The last option "Other..." will allow for entering any Title for focus timer
 	open_focus_tasks.add_item("Other...")
 	if is_instance_valid(notes_tab):
@@ -544,22 +574,23 @@ func _on_FocusTimer_timer_stopped():
 
 # Does what it says. Should maybe add a confirmation dialogue
 func _on_DeleteAllTasksButton_pressed():
-	if is_instance_valid(tasks_v_box):
-		running_task_id = 1
-		for task in tasks_v_box.get_children():
-			remove_task(task, false)
-		tasks_are_empty = true
-		save_changes()
-		delete_all_tasks_button.disabled = true
-		delete_completed_tasks_button.disabled = true
-
-
-func _on_DeleteCompletedTasksButton_pressed():
-	if is_instance_valid(tasks_v_box):
-		for task in tasks_v_box.get_children():
-			if task.completed:
+	for vbox in [starred_tasks_v_box, tasks_v_box, completed_tasks_v_box]:
+		if is_instance_valid(vbox):
+			running_task_id = 1
+			for task in vbox.get_children():
 				remove_task(task, false)
-		tasks_are_empty = true
+	tasks_are_empty = true
+	toggle_list_labels()
+	save_changes()
+	delete_all_tasks_button.disabled = true
+	delete_completed_tasks_button.disabled = true
+
+# Only delete completed tasks for housekeeping
+func _on_DeleteCompletedTasksButton_pressed():
+	if is_instance_valid(completed_tasks_v_box):
+		for task in completed_tasks_v_box.get_children():
+			remove_task(task, false)
+		toggle_list_labels()
 		save_changes()
 		delete_completed_tasks_button.disabled = true
 
@@ -589,9 +620,23 @@ func task_note_button_pressed(task):
 		task.set_has_note(true)
 		add_new_note(task.id)
 		
-
+# Should probably be called "toggle_task_starred". It will mark or unmark a task as starred 
+# and move it to the appropriate container
 func task_starred(task, is_starred):
-	sort_tasks()
+	if is_starred:
+		tasks_v_box.remove_child(task)
+		starred_tasks_v_box.add_child(task)
+		starred_tasks_v_box.move_child(task, 0)
+	else:
+		starred_tasks_v_box.remove_child(task)
+		tasks_v_box.add_child(task)
+		tasks_v_box.move_child(task, 0)
+#	sort_tasks()
+	toggle_list_labels()
+	disable_up_down_buttons_at_edges()
+	
 
-
-
+# _task and _color_tag are not yet used, but added for future
+func task_color_tag_changed(_task, _color_tag):
+	save_changes()
+	load_predefined_tasks()

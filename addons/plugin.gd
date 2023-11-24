@@ -15,7 +15,7 @@ func _exit_tree():
 		ins.queue_free()
 
 
-func get_plugin_name()-> String:
+func _get_plugin_name()-> String:
 	return "To-Do"
 
 

@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=3 format=3 uid="uid://p2q5nav4lnlu"]
+[gd_resource type="Theme" load_steps=3 format=3 uid="uid://dccutx84iy4ni"]
 
 [ext_resource type="FontFile" uid="uid://dm05pfmcv5bxi" path="res://addons/To-Do/Fonts/arial.ttf" id="1"]
 
@@ -10,14 +10,6 @@ cache/0/16/0/underline_position = 0.0
 cache/0/16/0/underline_thickness = 0.0
 cache/0/16/0/scale = 1.0
 cache/0/16/0/kerning_overrides/16/0 = Vector2(0, 0)
-cache/0/16/0/kerning_overrides/25/0 = Vector2(0, 0)
-cache/0/25/0/ascent = 0.0
-cache/0/25/0/descent = 0.0
-cache/0/25/0/underline_position = 0.0
-cache/0/25/0/underline_thickness = 0.0
-cache/0/25/0/scale = 1.0
-cache/0/25/0/kerning_overrides/16/0 = Vector2(0, 0)
-cache/0/25/0/kerning_overrides/25/0 = Vector2(0, 0)
 
 [resource]
 LineEdit/fonts/font = SubResource("1")

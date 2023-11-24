@@ -59,7 +59,7 @@ func _on_StartFocus_pressed() :
 	if is_focusing :
 		is_focusing = false
 		add_task_to_history()
-		clear()
+#		clear()
 	else :
 		match focus_type_tabs.current_tab :
 			0 :

@@ -1,8 +1,8 @@
-[gd_scene load_steps=4 format=3 uid="uid://i6gwqgo8joxr"]
+[gd_scene load_steps=4 format=3 uid="uid://dlhxu6c3akn2y"]
 
 [ext_resource type="Script" path="res://addons/To-Do/SRC/FocusTask.gd" id="1"]
-[ext_resource type="Texture2D" uid="uid://xv6r05n1y7tj" path="res://addons/To-Do/Icons/Remove.svg" id="2"]
-[ext_resource type="Texture2D" uid="uid://f6gdfjw8mwg2" path="res://addons/To-Do/Icons/Info.svg" id="3"]
+[ext_resource type="Texture2D" uid="uid://bvkjdcfy5py8b" path="res://addons/To-Do/Icons/Remove.svg" id="2"]
+[ext_resource type="Texture2D" uid="uid://8c0o3hem1puy" path="res://addons/To-Do/Icons/Info.svg" id="3"]
 
 [node name="FocusTask" type="HBoxContainer"]
 anchors_preset = 10
@@ -23,7 +23,7 @@ editable = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.08
+size_flags_stretch_ratio = 0.1
 icon = ExtResource("3")
 icon_alignment = 1
 expand_icon = true
@@ -32,7 +32,7 @@ expand_icon = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.08
+size_flags_stretch_ratio = 0.1
 icon = ExtResource("2")
 icon_alignment = 1
 expand_icon = true
